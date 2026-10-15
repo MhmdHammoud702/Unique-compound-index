@@ -2,31 +2,44 @@ const Booking = require("../models/Booking");
 
 async function getBookings() {
   try {
-    return await Booking.find().sort({ bookingDate: 1 }).lean();
+    const bookings = await Booking.find().sort({ bookingDate: 1 }).lean();
+    return { statusCode: 200, payload: { data: bookings } };
   } catch (error) {
-    const serviceError = new Error("Could not load bookings.");
-    serviceError.statusCode = 500;
-    serviceError.cause = error;
-    throw serviceError;
+    console.error("Could not load bookings:", error);
+    return {
+      statusCode: 500,
+      payload: { message: "Could not load bookings." },
+    };
   }
 }
 
 async function addBooking({ roomId, userId, bookingDate }) {
   try {
-    return await Booking.create({ roomId, userId, bookingDate });
+    const booking = await Booking.create({ roomId, userId, bookingDate });
+    return { statusCode: 201, payload: { data: booking } };
   } catch (error) {
     if (error.code === 11000) {
-      const conflict = new Error("Room is already booked for that time slot.");
-      conflict.statusCode = 409;
-      conflict.code = "E11000";
-      throw conflict;
+      return {
+        statusCode: 409,
+        payload: {
+          code: "E11000",
+          message: "Room is already booked for that time slot.",
+        },
+      };
     }
 
     if (error.name === "ValidationError") {
-      error.statusCode = 400;
+      return {
+        statusCode: 400,
+        payload: { message: error.message },
+      };
     }
 
-    throw error;
+    console.error("Could not create booking:", error);
+    return {
+      statusCode: 500,
+      payload: { message: "Could not create booking." },
+    };
   }
 }
 
